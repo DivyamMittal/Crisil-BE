@@ -2,17 +2,19 @@ import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 
-import { errorHandler } from "./common/middleware/error-handler.js";
-import { activitiesRouter } from "./features/activities/presentation/activity-routes.js";
-import { analyticsRouter } from "./features/analytics/presentation/analytics-routes.js";
-import { approvalsRouter } from "./features/approvals/presentation/approval-routes.js";
-import { authRouter } from "./features/auth/presentation/auth-routes.js";
-import { calendarRouter } from "./features/calendar/presentation/calendar-routes.js";
-import { commentsRouter } from "./features/comments/presentation/comment-routes.js";
-import { projectsRouter } from "./features/projects/presentation/project-routes.js";
-import { tasksRouter } from "./features/tasks/presentation/task-routes.js";
-import { timeTrackingRouter } from "./features/time-tracking/presentation/time-tracking-routes.js";
-import { usersRouter } from "./features/users/presentation/user-routes.js";
+import {
+  activitiesRouter,
+  analyticsRouter,
+  approvalsRouter,
+  authRouter,
+  calendarRouter,
+  commentsRouter,
+  projectsRouter,
+  tasksRouter,
+  timeTrackingRouter,
+  usersRouter,
+} from "./controllers/index.js";
+import { errorHandler } from "./middleware/error-handler.js";
 
 export const createApp = () => {
   const app = express();

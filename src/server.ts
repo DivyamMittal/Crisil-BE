@@ -1,5 +1,5 @@
 import { env } from "./config/env.js";
-import { connectDatabase } from "./database/mongoose.js";
+import { connectDatabase } from "./config/database.js";
 import { createApp } from "./app.js";
 
 const start = async () => {
