@@ -187,7 +187,8 @@ export const holidayIdParamsSchema = {
 
 export const dashboardQuerySchema = {
   query: Joi.object({
-    weekOffset: Joi.number().integer().min(-52).max(0).default(0),
+    period: Joi.string().valid("today", "week", "month").default("week"),
+    offset: Joi.number().integer().min(-52).max(0).default(0),
   }),
 };
 

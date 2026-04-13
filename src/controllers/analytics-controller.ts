@@ -13,7 +13,11 @@ analyticsRouter.get(
   requireAuth,
   validate(dashboardQuerySchema),
   asyncHandler(async (request, response) => {
-    const weekOffset = Number(request.query.weekOffset ?? 0);
-    response.json(await analyticsService.getDashboard(request.user!, weekOffset));
+    response.json(
+      await analyticsService.getDashboard(request.user!, {
+        period: String(request.query.period ?? "week") as "today" | "week" | "month",
+        offset: Number(request.query.offset ?? 0),
+      }),
+    );
   }),
 );

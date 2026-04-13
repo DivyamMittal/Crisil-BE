@@ -72,7 +72,16 @@ export class TasksService {
       start.setUTCHours(0, 0, 0, 0);
       const end = new Date(start);
       end.setUTCDate(end.getUTCDate() + 1);
-      filters.dueDateUtc = { $gte: start, $lt: end };
+      andConditions.push({
+        $or: [
+          { status: TaskStatus.WIP },
+          { status: TaskStatus.ON_HOLD },
+          { createdAt: { $gte: start, $lt: end } },
+          { startedAtUtc: { $gte: start, $lt: end } },
+          { completedAtUtc: { $gte: start, $lt: end } },
+          { dueDateUtc: { $gte: start, $lt: end } },
+        ],
+      });
     }
 
     const mongoQuery = andConditions.length > 0 ? { ...filters, $and: andConditions } : filters;
