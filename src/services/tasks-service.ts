@@ -47,9 +47,13 @@ export class TasksService {
     const andConditions: Array<Record<string, unknown>> = [];
 
     if (actor.role === UserRole.EMPLOYEE) {
-      andConditions.push({
-        $or: [{ assigneeId: actor.id }, { assigneeIds: actor.id }],
-      });
+      if (query.teamId) {
+        andConditions.push({ assignedTeamIds: query.teamId });
+      } else {
+        andConditions.push({
+          $or: [{ assigneeId: actor.id }, { assigneeIds: actor.id }],
+        });
+      }
     } else if (actor.role === UserRole.MANAGER) {
       const teamIds = await this.getManagerEmployeeIds(actor.id);
       const managedTeams = await this.teamRepository.findByManagerId(actor.id);
@@ -132,7 +136,7 @@ export class TasksService {
 
     if (!paginated) {
       const tasks = await this.taskRepository.findByQuery(mongoQuery);
-      return this.enrichTasksWithNames(tasks);
+      return await this.enrichTasksWithNames(tasks);
     }
 
     const [items, total] = await this.taskRepository.paginate(
@@ -332,7 +336,12 @@ export class TasksService {
     }
 
     if (!this.getTaskAssigneeIds(task).includes(employeeId)) {
-      throw new AppError(403, "Task is not assigned to you");
+      if ((task.assignedTeamIds ?? []).length > 0) {
+        task.assigneeIds.push(employeeId);
+        await task.save();
+      } else {
+        throw new AppError(403, "Task is not assigned to you");
+      }
     }
 
     const taskRunningEntries =
@@ -610,14 +619,14 @@ export class TasksService {
   }
 
   private async enrichTasksWithNames(tasks: any[]) {
-    const plainTasks = toPlainList(tasks);
+    const plainTasks = toPlainList(tasks) as any[];
     if (plainTasks.length === 0) return [];
 
     const allAssigneeIds = [
       ...new Set(
         plainTasks
           .filter((task) => (task.assignedTeamIds?.length ?? 0) === 0)
-          .flatMap((task) => this.getTaskAssigneeIds(task)),
+          .flatMap((task) => this.getTaskAssigneeIds(task as any)),
       ),
     ];
     const allTeamIds = [
@@ -632,8 +641,9 @@ export class TasksService {
     const userMap = new Map(users.map((u) => [String(u._id), u.fullName]));
     const teamMap = new Map(teams.map((t) => [String(t._id), t.name]));
 
-    return plainTasks.map((task) => {
-      const hasTeams = (task.assignedTeamIds?.length ?? 0) > 0;
+    return plainTasks.map((task: any) => {
+      const assignedTeamIds = (task.assignedTeamIds as string[]) ?? [];
+      const hasTeams = assignedTeamIds.length > 0;
       return {
         ...task,
         assigneeNames: hasTeams
@@ -641,9 +651,7 @@ export class TasksService {
           : this.getTaskAssigneeIds(task).map(
               (id) => userMap.get(id) || "Unknown",
             ),
-        teamNames: (task.assignedTeamIds ?? []).map(
-          (id) => teamMap.get(id) || "Unknown",
-        ),
+        teamNames: assignedTeamIds.map((id) => teamMap.get(id) || "Unknown"),
       };
     });
   }
@@ -659,8 +667,11 @@ export class TasksService {
   ) {
     const assigneeIds = this.getTaskAssigneeIds(task);
 
-    if (actor.role === UserRole.EMPLOYEE && !assigneeIds.includes(actor.id)) {
-      throw new AppError(403, "You do not have access to this task");
+    if (actor.role === UserRole.EMPLOYEE) {
+      const hasTeamAssignment = (task.assignedTeamIds ?? []).length > 0;
+      if (!assigneeIds.includes(actor.id) && !hasTeamAssignment) {
+        throw new AppError(403, "You do not have access to this task");
+      }
     }
 
     if (actor.role === UserRole.MANAGER) {

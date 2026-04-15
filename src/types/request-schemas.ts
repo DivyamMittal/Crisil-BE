@@ -109,6 +109,7 @@ export const taskListQuerySchema = {
     pageSize: Joi.number().integer().min(1).max(100).optional(),
     paginated: Joi.boolean().optional(),
     excludeCompleted: Joi.boolean().optional(),
+    teamId: Joi.string().allow("").trim().optional(),
   }),
 };
 

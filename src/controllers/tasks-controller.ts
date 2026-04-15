@@ -34,6 +34,7 @@ tasksRouter.get(
         excludeCompleted: request.query.excludeCompleted
           ? String(request.query.excludeCompleted)
           : undefined,
+        teamId: request.query.teamId ? String(request.query.teamId) : undefined,
       }),
     );
   }),
