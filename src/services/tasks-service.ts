@@ -1,6 +1,13 @@
 import { nanoid } from "nanoid";
 
-import { ApprovalStatus, ApprovalType, TaskStatus, TimeEntryType, TimerState, UserRole } from "../types/index.js";
+import {
+  ApprovalStatus,
+  ApprovalType,
+  TaskStatus,
+  TimeEntryType,
+  TimerState,
+  UserRole,
+} from "../types/index.js";
 import {
   ActivityRepository,
   ApprovalRepository,
@@ -13,7 +20,10 @@ import {
 } from "../repositories/index.js";
 import type { PaginationResult } from "../types/auth.js";
 import { AppError } from "../utils/app-error.js";
-import { calculateElapsedWholeMinutes, calculateElapsedWholeSeconds } from "../utils/elapsed-time.js";
+import {
+  calculateElapsedWholeMinutes,
+  calculateElapsedWholeSeconds,
+} from "../utils/elapsed-time.js";
 import { toPlain, toPlainList } from "../utils/serializers.js";
 import { nextStatusForTimerState } from "../utils/task-rules.js";
 
@@ -43,7 +53,9 @@ export class TasksService {
     } else if (actor.role === UserRole.MANAGER) {
       const teamIds = await this.getManagerEmployeeIds(actor.id);
       const managedTeams = await this.teamRepository.findByManagerId(actor.id);
-      const managedTeamIds = managedTeams.map((currentTeam) => String(currentTeam.id));
+      const managedTeamIds = managedTeams.map((currentTeam) =>
+        String(currentTeam.id),
+      );
       andConditions.push({
         $or: [
           { createdByManagerId: actor.id },
@@ -111,19 +123,25 @@ export class TasksService {
       });
     }
 
-    const mongoQuery = andConditions.length > 0 ? { ...filters, $and: andConditions } : filters;
+    const mongoQuery =
+      andConditions.length > 0 ? { ...filters, $and: andConditions } : filters;
     const page = Number(query.page ?? 1);
     const pageSize = Number(query.pageSize ?? 8);
-    const paginated = String(query.paginated) === "true" || typeof query.page !== "undefined";
+    const paginated =
+      String(query.paginated) === "true" || typeof query.page !== "undefined";
 
     if (!paginated) {
       const tasks = await this.taskRepository.findByQuery(mongoQuery);
-      return toPlainList(tasks);
+      return this.enrichTasksWithNames(tasks);
     }
 
-    const [items, total] = await this.taskRepository.paginate(mongoQuery, page, pageSize);
+    const [items, total] = await this.taskRepository.paginate(
+      mongoQuery,
+      page,
+      pageSize,
+    );
     const response: PaginationResult<Record<string, unknown> | null> = {
-      items: toPlainList(items),
+      items: (await this.enrichTasksWithNames(items)) as any,
       total,
       page,
       pageSize,
@@ -142,8 +160,19 @@ export class TasksService {
 
     await this.ensureTaskAccess(actor, task);
 
-    const assignedTeamIds = Array.isArray(task.assignedTeamIds) ? task.assignedTeamIds : [];
-    const [entries, comments, project, activity, assignee, createdBy, approvals, assignedTeams] = await Promise.all([
+    const assignedTeamIds = Array.isArray(task.assignedTeamIds)
+      ? task.assignedTeamIds
+      : [];
+    const [
+      entries,
+      comments,
+      project,
+      activity,
+      assignee,
+      createdBy,
+      approvals,
+      assignedTeams,
+    ] = await Promise.all([
       this.timeEntryRepository.findByTaskId(task.id),
       this.commentRepository.findByTaskId(task.id),
       this.projectRepository.findById(task.projectId),
@@ -155,9 +184,13 @@ export class TasksService {
     ]);
 
     const assigneeIds = this.getTaskAssigneeIds(task);
-    const assignees = await Promise.all(assigneeIds.map((assigneeId) => this.userRepository.findById(assigneeId)));
+    const assignees = await Promise.all(
+      assigneeIds.map((assigneeId) => this.userRepository.findById(assigneeId)),
+    );
     const authorIds = [...new Set(comments.map((comment) => comment.authorId))];
-    const commentAuthors = await Promise.all(authorIds.map((authorId) => this.userRepository.findById(authorId)));
+    const commentAuthors = await Promise.all(
+      authorIds.map((authorId) => this.userRepository.findById(authorId)),
+    );
 
     return {
       task: toPlain(task),
@@ -198,14 +231,24 @@ export class TasksService {
   ) {
     const uniqueTeamIds = [...new Set(input.assignedTeamIds ?? [])];
     const selectedTeams =
-      input.assignmentType === "TEAM" ? await this.teamRepository.findByIds(uniqueTeamIds) : [];
+      input.assignmentType === "TEAM"
+        ? await this.teamRepository.findByIds(uniqueTeamIds)
+        : [];
     const resolvedAssigneeIds =
       input.assignmentType === "TEAM"
         ? [...new Set(selectedTeams.flatMap((team) => team.memberIds ?? []))]
         : [...new Set(input.assigneeIds)];
-    const assignees = await Promise.all(resolvedAssigneeIds.map((assigneeId) => this.userRepository.findById(assigneeId)));
+    const assignees = await Promise.all(
+      resolvedAssigneeIds.map((assigneeId) =>
+        this.userRepository.findById(assigneeId),
+      ),
+    );
 
-    if (assignees.some((assignee) => !assignee || assignee.userRole !== UserRole.EMPLOYEE)) {
+    if (
+      assignees.some(
+        (assignee) => !assignee || assignee.userRole !== UserRole.EMPLOYEE,
+      )
+    ) {
       throw new AppError(400, "All assignees must be valid employees");
     }
 
@@ -220,12 +263,21 @@ export class TasksService {
     if (actor.role === UserRole.MANAGER) {
       const managerEmployeeIds = await this.getManagerEmployeeIds(actor.id);
 
-      if (input.assignmentType === "EMPLOYEE" && resolvedAssigneeIds.some((assigneeId) => !managerEmployeeIds.includes(assigneeId))) {
+      if (
+        input.assignmentType === "EMPLOYEE" &&
+        resolvedAssigneeIds.some(
+          (assigneeId) => !managerEmployeeIds.includes(assigneeId),
+        )
+      ) {
         throw new AppError(403, "One or more employees are outside your team");
       }
     }
 
-    if (!input.hasCountTracking && input.assignmentType !== "TEAM" && resolvedAssigneeIds.length !== 1) {
+    if (
+      !input.hasCountTracking &&
+      input.assignmentType !== "TEAM" &&
+      resolvedAssigneeIds.length !== 1
+    ) {
       throw new AppError(400, "Non-count tasks must have exactly one assignee");
     }
 
@@ -233,7 +285,10 @@ export class TasksService {
       throw new AppError(400, "At least one valid team is required");
     }
 
-    if (input.hasCountTracking && (!input.countNumber || input.countNumber < 1)) {
+    if (
+      input.hasCountTracking &&
+      (!input.countNumber || input.countNumber < 1)
+    ) {
       throw new AppError(400, "Count number is required for count-based tasks");
     }
 
@@ -252,7 +307,9 @@ export class TasksService {
       loggedMinutes: 0,
       hasCountTracking: input.hasCountTracking,
       countNumber: input.hasCountTracking ? input.countNumber : null,
-      benchmarkMinutesPerCount: input.hasCountTracking ? input.benchmarkMinutesPerCount : null,
+      benchmarkMinutesPerCount: input.hasCountTracking
+        ? input.benchmarkMinutesPerCount
+        : null,
       totalCountCompleted: 0,
       startedAtUtc: null,
       completedAtUtc: null,
@@ -278,14 +335,23 @@ export class TasksService {
       throw new AppError(403, "Task is not assigned to you");
     }
 
-    const taskRunningEntries = await this.timeEntryRepository.findRunningEntriesByTaskId(taskId);
+    const taskRunningEntries =
+      await this.timeEntryRepository.findRunningEntriesByTaskId(taskId);
 
     if (runningEntry) {
       throw new AppError(409, "You already have an active timer");
     }
 
-    if (!task.hasCountTracking && taskRunningEntries.some((entry: { employeeId: string }) => entry.employeeId !== employeeId)) {
-      throw new AppError(409, "Another assignee is already working on this task");
+    if (
+      !task.hasCountTracking &&
+      taskRunningEntries.some(
+        (entry: { employeeId: string }) => entry.employeeId !== employeeId,
+      )
+    ) {
+      throw new AppError(
+        409,
+        "Another assignee is already working on this task",
+      );
     }
 
     task.status = nextStatusForTimerState(task.status, TimerState.RUNNING);
@@ -318,7 +384,12 @@ export class TasksService {
     };
   }
 
-  async transitionTimer(taskId: string, timerState: TimerState, employeeId: string, countCompleted?: number) {
+  async transitionTimer(
+    taskId: string,
+    timerState: TimerState,
+    employeeId: string,
+    countCompleted?: number,
+  ) {
     const task = await this.taskRepository.findById(taskId);
 
     if (!task) {
@@ -329,14 +400,20 @@ export class TasksService {
       throw new AppError(403, "Task is not assigned to you");
     }
 
-    const entry = await this.timeEntryRepository.findLatestRunningEntry(taskId, employeeId);
+    const entry = await this.timeEntryRepository.findLatestRunningEntry(
+      taskId,
+      employeeId,
+    );
 
     if (!entry) {
       throw new AppError(404, "Running timer not found");
     }
 
     const endTime = new Date();
-    const durationSeconds = calculateElapsedWholeSeconds(entry.startTimeUtc, endTime);
+    const durationSeconds = calculateElapsedWholeSeconds(
+      entry.startTimeUtc,
+      endTime,
+    );
     const minutes = calculateElapsedWholeMinutes(entry.startTimeUtc, endTime);
     const nextStatus = nextStatusForTimerState(task.status, timerState);
 
@@ -355,10 +432,16 @@ export class TasksService {
         throw new AppError(400, "Count is required for count-based tasks");
       }
 
-      const remainingCount = Math.max(0, (task.countNumber ?? 0) - task.totalCountCompleted);
+      const remainingCount = Math.max(
+        0,
+        (task.countNumber ?? 0) - task.totalCountCompleted,
+      );
 
       if (countCompleted > remainingCount) {
-        throw new AppError(400, `Completed count cannot exceed remaining count (${remainingCount})`);
+        throw new AppError(
+          400,
+          `Completed count cannot exceed remaining count (${remainingCount})`,
+        );
       }
 
       const updatedTask = await this.taskRepository.applyCountTimerTransition({
@@ -369,7 +452,10 @@ export class TasksService {
       });
 
       if (!updatedTask) {
-        throw new AppError(400, "Completed count exceeds the remaining count for this task");
+        throw new AppError(
+          400,
+          "Completed count exceeds the remaining count for this task",
+        );
       }
 
       entry.countCompleted = countCompleted;
@@ -413,7 +499,12 @@ export class TasksService {
     return toPlain(task);
   }
 
-  async requestDueDateChange(taskId: string, employeeId: string, dueDateUtc: string, reason: string) {
+  async requestDueDateChange(
+    taskId: string,
+    employeeId: string,
+    dueDateUtc: string,
+    reason: string,
+  ) {
     const task = await this.taskRepository.findById(taskId);
 
     if (!task) {
@@ -468,7 +559,10 @@ export class TasksService {
       throw new AppError(403, "Task is not assigned to you");
     }
 
-    const durationSeconds = calculateElapsedWholeSeconds(startTimeUtc, endTimeUtc);
+    const durationSeconds = calculateElapsedWholeSeconds(
+      startTimeUtc,
+      endTimeUtc,
+    );
     const minutes = calculateElapsedWholeMinutes(startTimeUtc, endTimeUtc);
 
     const entry = await this.timeEntryRepository.create({
@@ -515,9 +609,53 @@ export class TasksService {
     };
   }
 
+  private async enrichTasksWithNames(tasks: any[]) {
+    const plainTasks = toPlainList(tasks);
+    if (plainTasks.length === 0) return [];
+
+    const allAssigneeIds = [
+      ...new Set(
+        plainTasks
+          .filter((task) => (task.assignedTeamIds?.length ?? 0) === 0)
+          .flatMap((task) => this.getTaskAssigneeIds(task)),
+      ),
+    ];
+    const allTeamIds = [
+      ...new Set(plainTasks.flatMap((task) => task.assignedTeamIds ?? [])),
+    ];
+
+    const [users, teams] = await Promise.all([
+      this.userRepository.findByIds(allAssigneeIds),
+      this.teamRepository.findByIds(allTeamIds),
+    ]);
+
+    const userMap = new Map(users.map((u) => [String(u._id), u.fullName]));
+    const teamMap = new Map(teams.map((t) => [String(t._id), t.name]));
+
+    return plainTasks.map((task) => {
+      const hasTeams = (task.assignedTeamIds?.length ?? 0) > 0;
+      return {
+        ...task,
+        assigneeNames: hasTeams
+          ? []
+          : this.getTaskAssigneeIds(task).map(
+              (id) => userMap.get(id) || "Unknown",
+            ),
+        teamNames: (task.assignedTeamIds ?? []).map(
+          (id) => teamMap.get(id) || "Unknown",
+        ),
+      };
+    });
+  }
+
   private async ensureTaskAccess(
     actor: { id: string; role: UserRole },
-    task: { assigneeId: string; assigneeIds?: string[]; assignedTeamIds?: string[]; createdByManagerId: string },
+    task: {
+      assigneeId: string;
+      assigneeIds?: string[];
+      assignedTeamIds?: string[];
+      createdByManagerId: string;
+    },
   ) {
     const assigneeIds = this.getTaskAssigneeIds(task);
 
@@ -528,19 +666,26 @@ export class TasksService {
     if (actor.role === UserRole.MANAGER) {
       const teamIds = await this.getManagerEmployeeIds(actor.id);
       const managedTeams = await this.teamRepository.findByManagerId(actor.id);
-      const managedTeamIds = managedTeams.map((currentTeam) => String(currentTeam.id));
+      const managedTeamIds = managedTeams.map((currentTeam) =>
+        String(currentTeam.id),
+      );
 
       if (
         task.createdByManagerId !== actor.id &&
         !assigneeIds.some((assigneeId) => teamIds.includes(assigneeId)) &&
-        !(task.assignedTeamIds ?? []).some((teamId) => managedTeamIds.includes(teamId))
+        !(task.assignedTeamIds ?? []).some((teamId) =>
+          managedTeamIds.includes(teamId),
+        )
       ) {
         throw new AppError(403, "You do not have access to this task");
       }
     }
   }
 
-  private getTaskAssigneeIds(task: { assigneeId?: string; assigneeIds?: string[] }) {
+  private getTaskAssigneeIds(task: {
+    assigneeId?: string;
+    assigneeIds?: string[];
+  }) {
     if (Array.isArray(task.assigneeIds) && task.assigneeIds.length > 0) {
       return task.assigneeIds;
     }
@@ -554,7 +699,12 @@ export class TasksService {
       this.teamRepository.findByManagerId(managerId),
     ]);
 
-    return [...new Set([...directReports.map((member) => member.id), ...managedTeams.flatMap((team) => team.memberIds ?? [])])];
+    return [
+      ...new Set([
+        ...directReports.map((member) => member.id),
+        ...managedTeams.flatMap((team) => team.memberIds ?? []),
+      ]),
+    ];
   }
 
   private sanitizeUser(user: Record<string, unknown> | null) {

@@ -10,6 +10,10 @@ export class UserRepository {
     return UserModel.findById(userId).select("_id email userRole isActive");
   }
 
+  findByIds(userIds: string[]) {
+    return UserModel.find({ _id: { $in: userIds } });
+  }
+
   findByEmail(email: string) {
     return UserModel.findOne({ email: email.toLowerCase() });
   }
