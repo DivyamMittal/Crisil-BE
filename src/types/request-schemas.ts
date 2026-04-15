@@ -118,6 +118,7 @@ export const timerTransitionSchema = {
     timerState: Joi.string()
       .valid(...Object.values(TimerState))
       .required(),
+    countCompleted: Joi.number().integer().min(0).allow(null).optional(),
   }),
 };
 
@@ -127,12 +128,68 @@ export const createTaskSchema = {
     activityId: Joi.string().required(),
     title: Joi.string().required(),
     description: Joi.string().required(),
-    assigneeId: Joi.string().required(),
+    assignmentType: Joi.string().valid("EMPLOYEE", "TEAM").default("EMPLOYEE"),
+    assigneeIds: Joi.when("assignmentType", {
+      is: "EMPLOYEE",
+      then: Joi.array().items(Joi.string()).min(1).required(),
+      otherwise: Joi.array().items(Joi.string()).default([]),
+    }),
+    assignedTeamIds: Joi.when("assignmentType", {
+      is: "TEAM",
+      then: Joi.array().items(Joi.string()).min(1).required(),
+      otherwise: Joi.array().items(Joi.string()).default([]),
+    }),
     priority: Joi.string()
       .valid(...Object.values(Priority))
       .required(),
-    estimatedHours: Joi.number().min(0.25).required(),
+    estimatedHours: Joi.when("hasCountTracking", {
+      is: true,
+      then: Joi.number().min(0).optional(),
+      otherwise: Joi.number().min(0.25).required(),
+    }),
+    hasCountTracking: Joi.boolean().default(false),
+    countNumber: Joi.when("hasCountTracking", {
+      is: true,
+      then: Joi.number().integer().min(1).required(),
+      otherwise: Joi.any().allow(null).optional(),
+    }),
+    benchmarkMinutesPerCount: Joi.when("hasCountTracking", {
+      is: true,
+      then: Joi.number().positive().required(),
+      otherwise: Joi.any().allow(null).optional(),
+    }),
     dueDateUtc: Joi.string().isoDate().required(),
+  }),
+};
+
+export const createTeamSchema = {
+  body: Joi.object({
+    name: Joi.string().trim().required(),
+    managerIds: Joi.array().items(Joi.string()).default([]),
+    memberIds: Joi.array().items(Joi.string()).default([]),
+  }),
+};
+
+export const teamListQuerySchema = {
+  query: Joi.object({
+    scope: Joi.string().valid("all").optional(),
+  }),
+};
+
+export const updateTeamSchema = {
+  params: Joi.object({
+    teamId: Joi.string().required(),
+  }),
+  body: Joi.object({
+    name: Joi.string().trim().required(),
+    managerIds: Joi.array().items(Joi.string()).default([]),
+    memberIds: Joi.array().items(Joi.string()).default([]),
+  }),
+};
+
+export const teamIdParamsSchema = {
+  params: Joi.object({
+    teamId: Joi.string().required(),
   }),
 };
 

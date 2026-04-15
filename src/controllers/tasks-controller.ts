@@ -60,9 +60,21 @@ tasksRouter.post(
         activityId: request.body.activityId,
         title: request.body.title,
         description: request.body.description,
-        assigneeId: request.body.assigneeId,
+        assignmentType: request.body.assignmentType,
+        assigneeIds: request.body.assigneeIds,
+        assignedTeamIds: request.body.assignedTeamIds,
         priority: request.body.priority,
         estimatedHours: Number(request.body.estimatedHours),
+        hasCountTracking: Boolean(request.body.hasCountTracking),
+        countNumber:
+          request.body.countNumber === null || typeof request.body.countNumber === "undefined"
+            ? null
+            : Number(request.body.countNumber),
+        benchmarkMinutesPerCount:
+          request.body.benchmarkMinutesPerCount === null ||
+          typeof request.body.benchmarkMinutesPerCount === "undefined"
+            ? null
+            : Number(request.body.benchmarkMinutesPerCount),
         dueDateUtc: request.body.dueDateUtc,
       }),
     );
@@ -90,6 +102,9 @@ tasksRouter.post(
         String(request.params.taskId),
         request.body.timerState as TimerState,
         request.user!.id,
+        typeof request.body.countCompleted === "number"
+          ? Number(request.body.countCompleted)
+          : undefined,
       ),
     );
   }),

@@ -36,6 +36,10 @@ export class TimeEntryRepository {
     return TimeEntryModel.findOne({ employeeId, timerState: TimerState.RUNNING });
   }
 
+  findRunningEntriesByTaskId(taskId: string) {
+    return TimeEntryModel.find({ taskId, timerState: TimerState.RUNNING }).sort({ createdAt: -1 });
+  }
+
   findLatestRunningEntry(taskId: string, employeeId: string) {
     return TimeEntryModel.findOne({
       taskId,
@@ -59,6 +63,7 @@ export class TimeEntryRepository {
     endTimeUtc: Date | string | null;
     durationSeconds: number;
     durationMinutes: number;
+    countCompleted: number | null;
     description: string;
     isSubmittedForApproval: boolean;
     approvalRequestId: string | null;

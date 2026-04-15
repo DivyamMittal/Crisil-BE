@@ -6,5 +6,6 @@ export * from "./calendar-service.js";
 export * from "./comments-service.js";
 export * from "./projects-service.js";
 export * from "./tasks-service.js";
+export * from "./teams-service.js";
 export * from "./time-tracking-service.js";
 export * from "./users-service.js";

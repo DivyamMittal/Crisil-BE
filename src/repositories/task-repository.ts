@@ -20,17 +20,24 @@ export class TaskRepository {
   }
 
   findByAssignee(assigneeId: string) {
-    return TaskModel.find({ assigneeId }).sort({ createdAt: -1 });
+    return TaskModel.find({ $or: [{ assigneeId }, { assigneeIds: assigneeId }] }).sort({ createdAt: -1 });
   }
 
   findByManagerScope(managerId: string, teamIds: string[]) {
     return TaskModel.find({
-      $or: [{ createdByManagerId: managerId }, { assigneeId: { $in: teamIds } }],
+      $or: [
+        { createdByManagerId: managerId },
+        { assigneeId: { $in: teamIds } },
+        { assigneeIds: { $in: teamIds } },
+      ],
     }).sort({ createdAt: -1 });
   }
 
   findRecentRunningEntryTask(taskId: string, employeeId: string) {
-    return TaskModel.findOne({ _id: taskId, assigneeId: employeeId });
+    return TaskModel.findOne({
+      _id: taskId,
+      $or: [{ assigneeId: employeeId }, { assigneeIds: employeeId }],
+    });
   }
 
   countByQuery(query: Record<string, unknown>) {
@@ -43,11 +50,17 @@ export class TaskRepository {
     title: string;
     description: string;
     assigneeId: string;
+    assigneeIds: string[];
+    assignedTeamIds: string[];
     createdByManagerId: string;
     priority: string;
     status: string;
     estimatedHours: number;
     loggedMinutes: number;
+    hasCountTracking: boolean;
+    countNumber: number | null;
+    benchmarkMinutesPerCount: number | null;
+    totalCountCompleted: number;
     dueDateUtc: string;
     startedAtUtc: null;
     completedAtUtc: null;
@@ -56,5 +69,32 @@ export class TaskRepository {
     lastTimerEntryId: null;
   }) {
     return TaskModel.create(input);
+  }
+
+  applyCountTimerTransition(input: {
+    taskId: string;
+    countCompleted: number;
+    loggedMinutes: number;
+    status: string;
+  }) {
+    return TaskModel.findOneAndUpdate(
+      {
+        _id: input.taskId,
+        countNumber: { $ne: null },
+        $expr: {
+          $lte: [{ $add: ["$totalCountCompleted", input.countCompleted] }, "$countNumber"],
+        },
+      },
+      {
+        $inc: {
+          totalCountCompleted: input.countCompleted,
+          loggedMinutes: input.loggedMinutes,
+        },
+        $set: {
+          status: input.status,
+        },
+      },
+      { new: true },
+    );
   }
 }

@@ -3,7 +3,8 @@ import mongoose, { Schema, type Model } from "mongoose";
 import { timestamps } from "./common.js";
 
 export interface TeamRecord {
-  managerId: string;
+  createdByAdminId: string;
+  managerIds: string[];
   name: string;
   memberIds: string[];
   createdAt: Date;
@@ -12,7 +13,8 @@ export interface TeamRecord {
 
 const teamSchema = new Schema<TeamRecord>(
   {
-    managerId: { type: String, required: true },
+    createdByAdminId: { type: String, required: true },
+    managerIds: { type: [String], default: [] },
     name: { type: String, required: true },
     memberIds: { type: [String], default: [] },
   },

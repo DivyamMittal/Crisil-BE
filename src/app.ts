@@ -11,6 +11,7 @@ import {
   commentsRouter,
   projectsRouter,
   tasksRouter,
+  teamsRouter,
   timeTrackingRouter,
   usersRouter,
 } from "./controllers/index.js";
@@ -32,6 +33,7 @@ export const createApp = () => {
   app.use("/api/v1/projects", projectsRouter);
   app.use("/api/v1/activities", activitiesRouter);
   app.use("/api/v1/tasks", tasksRouter);
+  app.use("/api/v1/teams", teamsRouter);
   app.use("/api/v1/time-tracking", timeTrackingRouter);
   app.use("/api/v1/approvals", approvalsRouter);
   app.use("/api/v1/comments", commentsRouter);

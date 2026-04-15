@@ -5,6 +5,7 @@ import {
   HolidayRepository,
   ProjectRepository,
   TaskRepository,
+  TeamRepository,
   TimeEntryRepository,
   UserRepository,
 } from "../repositories/index.js";
@@ -17,6 +18,7 @@ import {
   CommentsService,
   ProjectsService,
   TasksService,
+  TeamsService,
   TimeTrackingService,
   UsersService,
 } from "../services/index.js";
@@ -30,6 +32,7 @@ const timeEntryRepository = new TimeEntryRepository();
 const approvalRepository = new ApprovalRepository();
 const commentRepository = new CommentRepository();
 const holidayRepository = new HolidayRepository();
+const teamRepository = new TeamRepository();
 
 export const authService = new AuthService(userRepository, { sign: signAccessToken });
 export const usersService = new UsersService(userRepository);
@@ -51,7 +54,9 @@ export const tasksService = new TasksService(
   projectRepository,
   activityRepository,
   approvalRepository,
+  teamRepository,
 );
+export const teamsService = new TeamsService(teamRepository, userRepository);
 export const approvalsService = new ApprovalsService(
   approvalRepository,
   taskRepository,

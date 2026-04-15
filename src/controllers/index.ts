@@ -6,5 +6,6 @@ export * from "./calendar-controller.js";
 export * from "./comments-controller.js";
 export * from "./projects-controller.js";
 export * from "./tasks-controller.js";
+export * from "./teams-controller.js";
 export * from "./time-tracking-controller.js";
 export * from "./users-controller.js";

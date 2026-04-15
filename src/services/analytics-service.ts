@@ -105,6 +105,14 @@ const formatLoggedDuration = (seconds: number) => {
   return parts.length > 0 ? parts.join(" ") : "0s";
 };
 
+const getTaskAssigneeIds = (task: { assigneeId?: string; assigneeIds?: string[] }) => {
+  if (Array.isArray(task.assigneeIds) && task.assigneeIds.length > 0) {
+    return task.assigneeIds;
+  }
+
+  return task.assigneeId ? [task.assigneeId] : [];
+};
+
 export class AnalyticsService {
   constructor(
     private readonly timeEntryRepository: TimeEntryRepository,
@@ -192,12 +200,14 @@ export class AnalyticsService {
 
     const recentTaskByEmployee = new Map<string, (typeof tasks)[number]>();
     tasks
-      .filter((task) => teamIds.includes(task.assigneeId))
+      .filter((task) => getTaskAssigneeIds(task).some((assigneeId) => teamIds.includes(assigneeId)))
       .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
       .forEach((task) => {
-        if (!recentTaskByEmployee.has(task.assigneeId)) {
-          recentTaskByEmployee.set(task.assigneeId, task);
-        }
+        getTaskAssigneeIds(task).forEach((assigneeId) => {
+          if (!recentTaskByEmployee.has(assigneeId)) {
+            recentTaskByEmployee.set(assigneeId, task);
+          }
+        });
       });
 
     const totalTeamSeconds = [...secondsByEmployee.values()].reduce((sum, seconds) => sum + seconds, 0);

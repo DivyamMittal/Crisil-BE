@@ -15,6 +15,7 @@ export interface TimeEntryRecord {
   endTimeUtc: Date | null;
   durationSeconds: number;
   durationMinutes: number;
+  countCompleted: number | null;
   description: string;
   isSubmittedForApproval: boolean;
   approvalRequestId: string | null;
@@ -35,6 +36,7 @@ const timeEntrySchema = new Schema<TimeEntryRecord>(
     endTimeUtc: { type: Date, default: null },
     durationSeconds: { type: Number, default: 0 },
     durationMinutes: { type: Number, default: 0 },
+    countCompleted: { type: Number, default: null },
     description: { type: String, default: "" },
     isSubmittedForApproval: { type: Boolean, default: false },
     approvalRequestId: { type: String, default: null },

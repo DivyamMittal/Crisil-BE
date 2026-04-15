@@ -9,11 +9,17 @@ export interface TaskRecord {
   title: string;
   description: string;
   assigneeId: string;
+  assigneeIds: string[];
+  assignedTeamIds: string[];
   createdByManagerId: string;
   priority: Priority;
   status: TaskStatus;
   estimatedHours: number;
   loggedMinutes: number;
+  hasCountTracking: boolean;
+  countNumber: number | null;
+  benchmarkMinutesPerCount: number | null;
+  totalCountCompleted: number;
   dueDateUtc: Date;
   startedAtUtc: Date | null;
   completedAtUtc: Date | null;
@@ -31,11 +37,17 @@ const taskSchema = new Schema<TaskRecord>(
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     assigneeId: { type: String, required: true, index: true },
+    assigneeIds: { type: [String], required: true, default: [] },
+    assignedTeamIds: { type: [String], default: [] },
     createdByManagerId: { type: String, required: true },
     priority: { type: String, enum: Object.values(Priority), required: true },
     status: { type: String, enum: Object.values(TaskStatus), required: true, index: true },
     estimatedHours: { type: Number, required: true },
     loggedMinutes: { type: Number, default: 0 },
+    hasCountTracking: { type: Boolean, default: false },
+    countNumber: { type: Number, default: null },
+    benchmarkMinutesPerCount: { type: Number, default: null },
+    totalCountCompleted: { type: Number, default: 0 },
     dueDateUtc: { type: Date, required: true, index: true },
     startedAtUtc: { type: Date, default: null },
     completedAtUtc: { type: Date, default: null },
@@ -46,7 +58,7 @@ const taskSchema = new Schema<TaskRecord>(
   { timestamps },
 );
 
-taskSchema.index({ assigneeId: 1, status: 1, dueDateUtc: 1 });
+taskSchema.index({ assigneeIds: 1, status: 1, dueDateUtc: 1 });
 taskSchema.index({ projectId: 1, activityId: 1 });
 
 export const TaskModel: Model<TaskRecord> =
