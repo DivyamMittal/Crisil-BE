@@ -21,6 +21,10 @@ export class ActivityRepository {
     return ActivityModel.countDocuments({});
   }
 
+  findByQuery(query: Record<string, unknown>) {
+    return ActivityModel.find(query).sort({ createdAt: -1 });
+  }
+
   create(input: {
     projectId: string;
     name: string;

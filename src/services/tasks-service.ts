@@ -71,8 +71,27 @@ export class TasksService {
     }
 
     if (query.search) {
-      const pattern = new RegExp(String(query.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-      andConditions.push({ $or: [{ title: pattern }, { description: pattern }] });
+      const pattern = new RegExp(
+        String(query.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i",
+      );
+
+      const [matchingProjects, matchingActivities] = await Promise.all([
+        this.projectRepository.findByQuery({ name: pattern }),
+        this.activityRepository.findByQuery({ name: pattern }),
+      ]);
+
+      const projectIds = matchingProjects.map((p) => String(p._id));
+      const activityIds = matchingActivities.map((a) => String(a._id));
+
+      andConditions.push({
+        $or: [
+          { title: pattern },
+          { description: pattern },
+          { projectId: { $in: projectIds } },
+          { activityId: { $in: activityIds } },
+        ],
+      });
     }
 
     if (String(query.today) === "true") {
