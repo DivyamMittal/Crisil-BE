@@ -197,8 +197,8 @@ export const teamIdParamsSchema = {
 export const manualLogSchema = {
   params: taskIdParamsSchema.params,
   body: Joi.object({
-    startTimeUtc: Joi.string().isoDate().required(),
-    endTimeUtc: Joi.string().isoDate().required(),
+    durationMinutes: Joi.number().integer().min(1).required(),
+    countCompleted: Joi.number().integer().min(0).optional(),
     description: Joi.string().allow("").default(""),
     reason: Joi.string().required(),
   }),

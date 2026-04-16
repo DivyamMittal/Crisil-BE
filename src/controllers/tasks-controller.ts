@@ -148,10 +148,10 @@ tasksRouter.post(
       await tasksService.createManualLog(
         String(request.params.taskId),
         request.user!.id,
-        request.body.startTimeUtc,
-        request.body.endTimeUtc,
+        Number(request.body.durationMinutes),
         request.body.description,
         request.body.reason,
+        request.body.countCompleted != null ? Number(request.body.countCompleted) : undefined,
       ),
     );
   }),

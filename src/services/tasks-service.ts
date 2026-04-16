@@ -553,10 +553,10 @@ export class TasksService {
   async createManualLog(
     taskId: string,
     employeeId: string,
-    startTimeUtc: string,
-    endTimeUtc: string,
+    durationMinutes: number,
     description: string,
     reason: string,
+    countCompleted?: number,
   ) {
     const task = await this.taskRepository.findById(taskId);
 
@@ -568,11 +568,11 @@ export class TasksService {
       throw new AppError(403, "Task is not assigned to you");
     }
 
-    const durationSeconds = calculateElapsedWholeSeconds(
-      startTimeUtc,
-      endTimeUtc,
+    const endTimeUtc = new Date();
+    const startTimeUtc = new Date(
+      endTimeUtc.getTime() - durationMinutes * 60 * 1000,
     );
-    const minutes = calculateElapsedWholeMinutes(startTimeUtc, endTimeUtc);
+    const durationSeconds = durationMinutes * 60;
 
     const entry = await this.timeEntryRepository.create({
       taskId: task.id,
@@ -584,8 +584,8 @@ export class TasksService {
       startTimeUtc,
       endTimeUtc,
       durationSeconds,
-      durationMinutes: minutes,
-      countCompleted: null,
+      durationMinutes,
+      countCompleted: countCompleted ?? null,
       description,
       isSubmittedForApproval: true,
       approvalRequestId: null,
@@ -603,7 +603,8 @@ export class TasksService {
       managerComment: null,
       payload: {
         durationSeconds,
-        durationMinutes: minutes,
+        durationMinutes,
+        countCompleted,
       },
       requestedAtUtc: new Date(),
       reviewedAtUtc: null,

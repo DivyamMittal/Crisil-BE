@@ -75,6 +75,17 @@ export class ApprovalsService {
       if (entry) {
         entry.isSubmittedForApproval = approval.status !== ApprovalStatus.REJECTED;
         await entry.save();
+
+        if (approval.status === ApprovalStatus.APPROVED) {
+          const task = await this.taskRepository.findById(approval.taskId);
+          if (task) {
+            task.loggedMinutes += entry.durationMinutes;
+            if (task.hasCountTracking && entry.countCompleted) {
+              task.totalCountCompleted += entry.countCompleted;
+            }
+            await task.save();
+          }
+        }
       }
     }
 
