@@ -126,9 +126,9 @@ export const timerTransitionSchema = {
 export const createTaskSchema = {
   body: Joi.object({
     projectId: Joi.string().required(),
-    activityId: Joi.string().required(),
-    title: Joi.string().required(),
-    description: Joi.string().required(),
+    activityId: Joi.string().allow(null, "").optional(),
+    title: Joi.string().allow("").optional(),
+    description: Joi.string().allow("").optional(),
     assignmentType: Joi.string().valid("EMPLOYEE", "TEAM").default("EMPLOYEE"),
     assigneeIds: Joi.when("assignmentType", {
       is: "EMPLOYEE",

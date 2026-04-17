@@ -8,7 +8,7 @@ export interface TimeEntryRecord {
   taskId: string;
   employeeId: string;
   projectId: string;
-  activityId: string;
+  activityId: string | null;
   entryType: TimeEntryType;
   timerState: TimerState;
   startTimeUtc: Date;
@@ -29,7 +29,7 @@ const timeEntrySchema = new Schema<TimeEntryRecord>(
     taskId: { type: String, required: true },
     employeeId: { type: String, required: true, index: true },
     projectId: { type: String, required: true },
-    activityId: { type: String, required: true },
+    activityId: { type: String, required: false, default: null },
     entryType: { type: String, enum: Object.values(TimeEntryType), required: true },
     timerState: { type: String, enum: Object.values(TimerState), required: true },
     startTimeUtc: { type: Date, required: true, index: true },

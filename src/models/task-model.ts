@@ -4,8 +4,9 @@ import { Priority, TaskStatus } from "../types/enums.js";
 import { timestamps } from "./common.js";
 
 export interface TaskRecord {
+  _id: { toString(): string };
   projectId: string;
-  activityId: string;
+  activityId: string | null;
   title: string;
   description: string;
   assigneeId: string;
@@ -33,9 +34,9 @@ export interface TaskRecord {
 const taskSchema = new Schema<TaskRecord>(
   {
     projectId: { type: String, required: true, index: true },
-    activityId: { type: String, required: true, index: true },
-    title: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
+    activityId: { type: String, required: false, index: true, default: null },
+    title: { type: String, required: false, trim: true, default: "" },
+    description: { type: String, required: false, default: "" },
     assigneeId: { type: String, required: true, index: true },
     assigneeIds: { type: [String], required: true, default: [] },
     assignedTeamIds: { type: [String], default: [] },

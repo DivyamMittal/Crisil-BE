@@ -46,7 +46,7 @@ export class TaskRepository {
 
   create(input: {
     projectId: string;
-    activityId: string;
+    activityId: string | null;
     title: string;
     description: string;
     assigneeId: string;

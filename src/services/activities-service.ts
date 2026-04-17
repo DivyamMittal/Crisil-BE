@@ -19,9 +19,7 @@ export class ActivitiesService {
     }
 
     if (actor.role === UserRole.EMPLOYEE) {
-      const tasks = await this.taskRepository.findByAssignee(actor.id);
-      const activityIds = [...new Set(tasks.map((task) => task.activityId))];
-      const activities = await this.activityRepository.findByIds(activityIds);
+      const activities = await this.activityRepository.findAll();
       return toPlainList(activities);
     }
 

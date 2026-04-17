@@ -56,7 +56,7 @@ export class TimeEntryRepository {
     taskId: string;
     employeeId: string;
     projectId: string;
-    activityId: string;
+    activityId: string | null;
     entryType: string;
     timerState: string;
     startTimeUtc: Date | string;

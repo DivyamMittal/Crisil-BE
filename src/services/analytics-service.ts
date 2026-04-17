@@ -189,7 +189,9 @@ export class AnalyticsService {
     ]);
 
     const projectMap = new Map(projects.map((project) => [project.id, project.name]));
-    const activityMap = new Map(activities.map((activity) => [activity.id, activity.name]));
+    const activityMap = new Map<string, string>(
+      activities.map((activity) => [String(activity._id), activity.name]),
+    );
     const taskMap = new Map(tasks.map((task) => [task.id, task]));
     const secondsByEmployee = new Map<string, number>();
 
@@ -230,7 +232,10 @@ export class AnalyticsService {
         memberId: member.id,
         memberName: member.fullName,
         project: recentTask ? projectMap.get(recentTask.projectId) ?? "Not specified" : "Not specified",
-        activity: recentTask ? activityMap.get(recentTask.activityId) ?? "Inactive" : "Inactive",
+        activity:
+          recentTask && recentTask.activityId
+            ? activityMap.get(recentTask.activityId) ?? "Inactive"
+            : "Inactive",
         task: recentTask?.title ?? "No task selected",
         status: recentTask?.status ?? null,
         timeLogged: formatLoggedDuration(loggedSeconds),
@@ -243,7 +248,10 @@ export class AnalyticsService {
         const task = taskMap.get(approval.taskId);
         const member = teamMembers.find((user) => user.id === approval.requestedBy);
         const projectName = task ? projectMap.get(task.projectId) ?? "Project" : "Project";
-        const activityName = task ? activityMap.get(task.activityId) ?? "Activity" : "Activity";
+        const activityName =
+          task && task.activityId
+            ? activityMap.get(task.activityId) ?? "Activity"
+            : "Activity";
 
         let details = `${projectName} / ${activityName}`;
 

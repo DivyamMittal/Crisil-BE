@@ -14,9 +14,7 @@ export class ProjectsService {
 
   async listProjects(actor: { id: string; role: UserRole }) {
     if (actor.role === UserRole.EMPLOYEE) {
-      const tasks = await this.taskRepository.findByAssignee(actor.id);
-      const projectIds = [...new Set(tasks.map((task) => task.projectId))];
-      const projects = await this.projectRepository.findByIds(projectIds);
+      const projects = await this.projectRepository.findByQuery({});
       return toPlainList(projects);
     }
 

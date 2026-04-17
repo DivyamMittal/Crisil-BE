@@ -1,7 +1,8 @@
 import { ActivityModel } from "../models/index.js";
 
 export class ActivityRepository {
-  findById(activityId: string) {
+  findById(activityId: string | null) {
+    if (!activityId) return null;
     return ActivityModel.findById(activityId);
   }
 

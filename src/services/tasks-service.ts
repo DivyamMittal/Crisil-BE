@@ -27,6 +27,14 @@ import {
 import { toPlain, toPlainList } from "../utils/serializers.js";
 import { nextStatusForTimerState } from "../utils/task-rules.js";
 
+import { TaskRecord } from "../models/task-model.js";
+
+interface EnrichedTask extends TaskRecord {
+  id: string;
+  assigneeNames: string[];
+  teamNames: string[];
+}
+
 export class TasksService {
   constructor(
     private readonly taskRepository: TaskRepository,
@@ -49,22 +57,19 @@ export class TasksService {
     if (actor.role === UserRole.EMPLOYEE) {
       if (query.teamId) {
         andConditions.push({ assignedTeamIds: query.teamId });
-      } else {
-        andConditions.push({
-          $or: [{ assigneeId: actor.id }, { assigneeIds: actor.id }],
-        });
       }
+      // Assignment restriction removed to allow searching all tasks like Jira.
     } else if (actor.role === UserRole.MANAGER) {
-      const teamIds = await this.getManagerEmployeeIds(actor.id);
+      const teamMatesIds = await this.getManagerEmployeeIds(actor.id);
       const managedTeams = await this.teamRepository.findByManagerId(actor.id);
       const managedTeamIds = managedTeams.map((currentTeam) =>
-        String(currentTeam.id),
+        String(currentTeam._id),
       );
       andConditions.push({
         $or: [
           { createdByManagerId: actor.id },
-          { assigneeId: { $in: teamIds } },
-          { assigneeIds: { $in: teamIds } },
+          { assigneeId: { $in: teamMatesIds } },
+          { assigneeIds: { $in: teamMatesIds } },
           { assignedTeamIds: { $in: managedTeamIds } },
         ],
       });
@@ -144,8 +149,8 @@ export class TasksService {
       page,
       pageSize,
     );
-    const response: PaginationResult<Record<string, unknown> | null> = {
-      items: (await this.enrichTasksWithNames(items)) as any,
+    const response: PaginationResult<EnrichedTask> = {
+      items: await this.enrichTasksWithNames(items),
       total,
       page,
       pageSize,
@@ -302,6 +307,9 @@ export class TasksService {
 
     const task = await this.taskRepository.create({
       ...input,
+      title: input.title?.trim() ? input.title.trim() : "New Task",
+      activityId: input.activityId || null,
+      description: input.description || "",
       estimatedHours,
       assigneeId: resolvedAssigneeIds[0],
       assigneeIds: resolvedAssigneeIds,
@@ -619,15 +627,19 @@ export class TasksService {
     };
   }
 
-  private async enrichTasksWithNames(tasks: any[]) {
-    const plainTasks = toPlainList(tasks) as any[];
+  private async enrichTasksWithNames(
+    tasks: TaskRecord[],
+  ): Promise<EnrichedTask[]> {
+    const plainTasks = toPlainList(tasks) as unknown as (TaskRecord & {
+      id: string;
+    })[];
     if (plainTasks.length === 0) return [];
 
     const allAssigneeIds = [
       ...new Set(
         plainTasks
           .filter((task) => (task.assignedTeamIds?.length ?? 0) === 0)
-          .flatMap((task) => this.getTaskAssigneeIds(task as any)),
+          .flatMap((task) => this.getTaskAssigneeIds(task)),
       ),
     ];
     const allTeamIds = [
@@ -642,18 +654,19 @@ export class TasksService {
     const userMap = new Map(users.map((u) => [String(u._id), u.fullName]));
     const teamMap = new Map(teams.map((t) => [String(t._id), t.name]));
 
-    return plainTasks.map((task: any) => {
-      const assignedTeamIds = (task.assignedTeamIds as string[]) ?? [];
+    return plainTasks.map((task) => {
+      const assignedTeamIds = task.assignedTeamIds ?? [];
       const hasTeams = assignedTeamIds.length > 0;
       return {
         ...task,
+        id: task.id,
         assigneeNames: hasTeams
           ? []
           : this.getTaskAssigneeIds(task).map(
               (id) => userMap.get(id) || "Unknown",
             ),
         teamNames: assignedTeamIds.map((id) => teamMap.get(id) || "Unknown"),
-      };
+      } as EnrichedTask;
     });
   }
 
@@ -668,18 +681,16 @@ export class TasksService {
   ) {
     const assigneeIds = this.getTaskAssigneeIds(task);
 
+    // Employees now have open access to all tasks as per Jira-like requirement.
     if (actor.role === UserRole.EMPLOYEE) {
-      const hasTeamAssignment = (task.assignedTeamIds ?? []).length > 0;
-      if (!assigneeIds.includes(actor.id) && !hasTeamAssignment) {
-        throw new AppError(403, "You do not have access to this task");
-      }
+      return;
     }
 
     if (actor.role === UserRole.MANAGER) {
       const teamIds = await this.getManagerEmployeeIds(actor.id);
       const managedTeams = await this.teamRepository.findByManagerId(actor.id);
       const managedTeamIds = managedTeams.map((currentTeam) =>
-        String(currentTeam.id),
+        String(currentTeam._id),
       );
 
       if (
@@ -705,7 +716,7 @@ export class TasksService {
     return task.assigneeId ? [task.assigneeId] : [];
   }
 
-  private async getManagerEmployeeIds(managerId: string) {
+  private async getManagerEmployeeIds(managerId: string): Promise<string[]> {
     const [directReports, managedTeams] = await Promise.all([
       this.userRepository.findIdsByManagerId(managerId),
       this.teamRepository.findByManagerId(managerId),
@@ -713,7 +724,7 @@ export class TasksService {
 
     return [
       ...new Set([
-        ...directReports.map((member) => member.id),
+        ...directReports.map((member) => String(member._id)),
         ...managedTeams.flatMap((team) => team.memberIds ?? []),
       ]),
     ];
